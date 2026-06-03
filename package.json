@@ -1,0 +1,30 @@
+{
+  "name": "@khoralabs/sourcemaps",
+  "version": "0.0.0",
+  "description": "Shared types for content-addressed source resolution",
+  "module": "src/index.ts",
+  "type": "module",
+  "files": [
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "test": "bun test",
+    "release": "bash scripts/release.sh"
+  }
+}
