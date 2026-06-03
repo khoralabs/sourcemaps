@@ -1,6 +1,6 @@
 # @khoralabs/sourcemaps
 
-Shared types for **content-addressed source resolution**: a stable ref points at original content, a `Store` materializes it, and consuming packages own locators, projections, and persistence.
+Shared types for **content-addressed source resolution**: a stable ref points at original content, a `Store` materializes it, and consuming code owns locators, projections, and persistence.
 
 Use this library when multiple subsystems need the same ref → resolve contract without sharing domain schemas.
 
@@ -9,14 +9,14 @@ Use this library when multiple subsystems need the same ref → resolve contract
 Many systems keep two related artifacts:
 
 1. **Original** — the canonical body (bytes, record, URL target, etc.)
-2. **Projection** — something derived for search, fan-out, or UI (indexed text, embeddings, catalog metadata)
+2. **Projection** — something derived for search, fan-out, or UI (indexed text, embeddings, display metadata)
 
-A **source ref** is not the projection. It is the **address** used to find and resolve the original. Projections live in domain tables and are keyed *by* that address, not embedded in the ref type.
+A **source ref** is not the projection. It is the **address** used to find and resolve the original. Projections live elsewhere and are keyed *by* that address, not embedded in the ref type.
 
 ```text
   SourceRef (address)              Projection (elsewhere)
-  container_id + entry_key    -->  search_index.document
-  cell_id + record_key        -->  catalog_row.projection
+  bucket + object_key         -->  search_index.document
+  repo + path                 -->  derived_view.snapshot
 
         Store.resolve(ref)
               |
@@ -38,11 +38,11 @@ A **source ref** is not the projection. It is the **address** used to find and r
 Define **locators** per domain — only fields needed to look up the original:
 
 ```ts
-type CatalogLocators = { catalog_id: string; entry_key: string };
-type CatalogRef = SourceRef<CatalogLocators> & { content_hash?: ContentHash };
+type FileLocators = { bucket: string; key: string };
+type FileRef = SourceRef<FileLocators> & { content_hash?: ContentHash };
 
-type RemoteLocators = { cell_id: string; record_key: string };
-type RemotePointerRef = ContentAddressedRef<RemoteLocators>;
+type GitLocators = { repo: string; path: string; revision: string };
+type GitPointerRef = ContentAddressedRef<GitLocators>;
 ```
 
 Do **not** put projection payloads (indexed text, embeddings, UI metadata, etc.) on `SourceRef` / `ContentAddressedRef`.
@@ -60,11 +60,11 @@ Do **not** put projection payloads (indexed text, embeddings, UI metadata, etc.)
 
 ### What does not belong in this package
 
-- Domain validation schemas and SQL tables
+- Domain validation schemas and storage schemas
 - Projection / index rows
 - Merge or provenance algorithms
 
-Keep those in the package that owns the domain.
+Keep those in the code that owns the domain.
 
 ## When to use which ref
 
@@ -95,13 +95,13 @@ import type {
   Store,
 } from "@khoralabs/sourcemaps";
 
-type BlobLocators = { cell_id: string; record_key: string };
-type BlobPointerRef = ContentAddressedRef<BlobLocators>;
+type ObjectLocators = { bucket: string; key: string };
+type ObjectRef = ContentAddressedRef<ObjectLocators>;
 
-export function createBlobStore(/* deps */): Store<BlobPointerRef> {
+export function createObjectStore(/* deps */): Store<ObjectRef> {
   return {
     async resolve(ref) {
-      const bytes = await fetchBytes(ref.cell_id, ref.record_key);
+      const bytes = await fetchObject(ref.bucket, ref.key);
       // optional: assert sha256(bytes) === ref.content_hash
       return { kind: "blob", blob: new Blob([bytes]) };
     },
@@ -109,7 +109,7 @@ export function createBlobStore(/* deps */): Store<BlobPointerRef> {
 }
 ```
 
-Domain packages may extend `Store` with extra methods (sync hooks, batch prefetch, etc.) in their own modules.
+You can extend `Store` with extra methods (sync hooks, batch prefetch, etc.) in your own modules.
 
 ## Wire / file-backed caches
 
@@ -118,7 +118,7 @@ JSONL and similar logs should pair domain locators with `ResolvedSourceWire`. Th
 Example line shape:
 
 ```ts
-type CachedLine = SourceRef<{ container_id: string; entry_key: string }> & ResolvedSourceWire;
+type CachedLine = SourceRef<{ bucket: string; key: string }> & ResolvedSourceWire;
 ```
 
 ## Tests
