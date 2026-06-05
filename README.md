@@ -1,5 +1,7 @@
 # @khoralabs/sourcemaps
 
+Licensed under [MIT](LICENSE).
+
 Shared types for **content-addressed source resolution**: a stable ref points at original content, a `Store` materializes it, and consuming code owns locators, projections, and persistence.
 
 Use this library when multiple subsystems need the same ref → resolve contract without sharing domain schemas.
